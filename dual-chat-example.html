@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>雙聊天室模擬</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        h1, h2 {
+            color: #333;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input, button {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        
+        .status.connected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .status.disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status.joined {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .chat-container {
+            height: 300px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            overflow-y: auto;
+            background-color: #f9f9f9;
+            margin-bottom: 15px;
+        }
+        
+        .message {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 4px;
+        }
+        
+        .message.system {
+            background-color: #e9ecef;
+            color: #495057;
+            font-style: italic;
+        }
+        
+        .message.chat {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .players-list {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        
+        .player {
+            padding: 5px;
+            margin: 2px 0;
+            background-color: white;
+            border-radius: 3px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .player.host {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+        }
+        
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            height: 150px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .room-section {
+            border: 2px solid #007bff;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .room-section h3 {
+            color: #007bff;
+            margin-top: 0;
+        }
+        
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>雙聊天室模擬 - 兩個獨立用戶</h1>
+    
+    <div class="container">
+        <h2>房間設置</h2>
+        <div style="background-color: #e7f3ff; padding: 15px; border-radius: 4px; margin-bottom: 15px; font-size: 14px;">
+            <strong>模擬說明：</strong><br>
+            • 兩個完全獨立的 P2P 客戶端，使用相同的房間信息<br>
+            • 左側：用戶1（先加入，可能成為主機）<br>
+            • 右側：用戶2（後加入，成為客戶端）<br>
+            • 每個用戶都有不同的別名，可以模擬兩個用戶在同一個房間中的互動
+        </div>
+        
+        <div class="form-group">
+            <label for="alias1">用戶1別名:</label>
+            <input type="text" id="alias1" placeholder="輸入用戶1別名" value="用戶1">
+        </div>
+        <div class="form-group">
+            <label for="alias2">用戶2別名:</label>
+            <input type="text" id="alias2" placeholder="輸入用戶2別名" value="用戶2">
+        </div>
+        <div class="form-group">
+            <label for="traceID">追蹤 ID:</label>
+            <input type="text" id="traceID" placeholder="追蹤 ID" value="TestRoom">
+        </div>
+        <div class="form-group">
+            <label for="publicKey">公鑰:</label>
+            <input type="text" id="publicKey" placeholder="公鑰" value="TestPublicKey">
+        </div>
+        <div class="form-group">
+            <label for="idSign">ID 簽名:</label>
+            <input type="text" id="idSign" placeholder="ID 簽名" value="TestIDSign">
+        </div>
+        
+        <button id="connectRoom1Btn">連接用戶1</button>
+        <button id="connectRoom2Btn">連接用戶2</button>
+        <button id="disconnectAllBtn" disabled>斷開所有連接</button>
+        <button id="testConnectionBtn">測試連接狀態</button>
+    </div>
+    
+    <div class="grid">
+        <!-- 聊天室 1 - 用戶1 -->
+        <div class="room-section">
+            <h3>聊天室 1 - 用戶1</h3>
+            
+            <div id="room1Status" class="status disconnected">未連接</div>
+            
+            <button id="room1JoinBtn" disabled>加入房間 (用戶1)</button>
+            <button id="room1LeaveBtn" disabled>離開房間</button>
+            
+            <div class="chat-container" id="room1Chat"></div>
+            <div class="form-group">
+                <input type="text" id="room1Message" placeholder="輸入消息..." disabled>
+            </div>
+            <button id="room1SendBtn" disabled>發送消息</button>
+            
+            <div class="players-list" id="room1Players">
+                <div class="player">等待連接...</div>
+            </div>
+        </div>
+        
+        <!-- 聊天室 2 - 用戶2 -->
+        <div class="room-section">
+            <h3>聊天室 2 - 用戶2</h3>
+            
+            <div id="room2Status" class="status disconnected">未連接</div>
+            
+            <button id="room2JoinBtn" disabled>加入房間 (用戶2)</button>
+            <button id="room2LeaveBtn" disabled>離開房間</button>
+            
+            <div class="chat-container" id="room2Chat"></div>
+            <div class="form-group">
+                <input type="text" id="room2Message" placeholder="輸入消息..." disabled>
+            </div>
+            <button id="room2SendBtn" disabled>發送消息</button>
+            
+            <div class="players-list" id="room2Players">
+                <div class="player">等待連接...</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="container">
+        <h2>全局日誌</h2>
+        <div id="log" class="log"></div>
+        <button id="clearLogBtn">清除日誌</button>
+    </div>
+
+    <!-- 引入統一的 P2P 客戶端庫 -->
+    <script src="construct3-p2p-unified.js"></script>
+    
+    <script>
+        // 初始化一個 P2P 客戶端管理器
+        let p2pManager;
+        try {
+            p2pManager = new Construct3P2PClient();
+            
+            // 設置全局事件回調
+            setupGlobalEventCallbacks(p2pManager);
+            
+            console.log('P2P 客戶端管理器初始化成功');
+        } catch (error) {
+            console.error('P2P 客戶端初始化失敗:', error);
+            alert('P2P 客戶端初始化失敗: ' + error.message);
+        }
+        
+        // 設置全局事件回調
+        function setupGlobalEventCallbacks(p2pManager) {
+            p2pManager.onConnected = async (data) => {
+                console.log('全局 onConnected 觸發:', data);
+                log(`客戶端 ${data.clientTag} 已連接到信令服務器`, 'success');
+                
+                // 更新對應房間的連接狀態
+                const roomName = data.clientTag === 'user1' ? 'room1' : 'room2';
+                rooms[roomName].isConnected = true;
+                updateRoomStatus(roomName, '已連接到信令服務器', 'connected');
+                updateRoomButtons(roomName);
+                
+                // 連接成功後自動登錄
+                try {
+                    // 根據 clientTag 選擇對應的別名
+                    const alias = data.clientTag === 'user1' ? 
+                        document.getElementById('alias1').value.trim() || 'User1' :
+                        document.getElementById('alias2').value.trim() || 'User2';
+                    
+                    // 獲取對應的客戶端並登錄
+                    const client = p2pManager.getClient(data.clientTag);
+                    if (client) {
+                        await client.loginToSignallingServer(alias);
+                        log(`客戶端 ${data.clientTag} 登錄請求已發送`, 'success');
+                    }
+                } catch (error) {
+                    log(`客戶端 ${data.clientTag} 登錄失敗: ${error.message}`, 'error');
+                    console.error('登錄錯誤:', error);
+                }
+            };
+            
+            p2pManager.onLoggedIn = (data) => {
+                console.log('全局 onLoggedIn 觸發:', data);
+                log(`客戶端 ${data.clientTag} 已登錄: ${data.alias}`, 'success');
+                
+                // 更新對應房間的登錄狀態
+                const roomName = data.clientTag === 'user1' ? 'room1' : 'room2';
+                updateRoomStatus(roomName, `已登錄: ${data.alias}`, 'connected');
+                updateRoomButtons(roomName);
+            };
+            
+            p2pManager.onJoinedRoom = (data) => {
+                console.log('全局 onJoinedRoom 觸發:', data);
+                log(`客戶端 ${data.clientTag} 已加入房間，是否為主機: ${data.isHost}`, 'success');
+                
+                const roomName = data.clientTag === 'user1' ? 'room1' : 'room2';
+                rooms[roomName].isInRoom = true;
+                rooms[roomName].isHost = data.isHost;
+                updateRoomStatus(roomName, `已加入房間 (${data.isHost ? '主機' : '客戶端'})`, 'joined');
+                updateRoomButtons(roomName);
+                updateRoomPlayers(roomName);
+                addChatMessage(roomName, '已加入房間', 'system');
+            };
+            
+            p2pManager.onPeerJoined = (data) => {
+                console.log('全局 onPeerJoined 觸發:', data);
+                log(`客戶端 ${data.clientTag} 玩家加入: ${data.peerAlias} (${data.peerId})`, 'success');
+                
+                // 更新兩個房間的玩家列表
+                updateRoomPlayers('room1');
+                updateRoomPlayers('room2');
+                // 在兩個房間都顯示玩家加入消息
+                addChatMessage('room1', `${data.peerAlias} 加入了房間`, 'system');
+                addChatMessage('room2', `${data.peerAlias} 加入了房間`, 'system');
+            };
+            
+            p2pManager.onPeerMessage = (data) => {
+                console.log('全局 onPeerMessage 觸發:', data);
+                log(`客戶端 ${data.clientTag} 收到消息: ${data.message}`, 'info');
+                
+                // 檢查消息格式並正確處理
+                if (typeof data.message === 'string') {
+                    try {
+                        const parsedMessage = JSON.parse(data.message);
+                        if (parsedMessage.type === 'chat') {
+                            // 在兩個房間都顯示消息
+                            addChatMessage('room1', data.message, 'chat');
+                            addChatMessage('room2', data.message, 'chat');
+                        } else {
+                            addChatMessage('room1', parsedMessage.message || data.message, 'system');
+                            addChatMessage('room2', parsedMessage.message || data.message, 'system');
+                        }
+                    } catch (e) {
+                        addChatMessage('room1', data.message, 'system');
+                        addChatMessage('room2', data.message, 'system');
+                    }
+                } else {
+                    addChatMessage('room1', JSON.stringify(data.message), 'chat');
+                    addChatMessage('room2', JSON.stringify(data.message), 'chat');
+                }
+            };
+            
+            p2pManager.onError = (data) => {
+                console.log('全局 onError 觸發:', data);
+                log(`錯誤: ${data.errorMessage}`, 'error');
+            };
+        }
+        
+        
+        // 聊天室狀態
+        const rooms = {
+            room1: {
+                p2pManager: p2pManager,
+                clientTag: 'user1',
+                isConnected: false,
+                isInRoom: false,
+                isHost: false,
+                role: '用戶1',
+                elements: {
+                    status: document.getElementById('room1Status'),
+                    joinBtn: document.getElementById('room1JoinBtn'),
+                    leaveBtn: document.getElementById('room1LeaveBtn'),
+                    chat: document.getElementById('room1Chat'),
+                    message: document.getElementById('room1Message'),
+                    sendBtn: document.getElementById('room1SendBtn'),
+                    players: document.getElementById('room1Players')
+                }
+            },
+            room2: {
+                p2pManager: p2pManager,
+                clientTag: 'user2',
+                isConnected: false,
+                isInRoom: false,
+                isHost: false,
+                role: '用戶2',
+                elements: {
+                    status: document.getElementById('room2Status'),
+                    joinBtn: document.getElementById('room2JoinBtn'),
+                    leaveBtn: document.getElementById('room2LeaveBtn'),
+                    chat: document.getElementById('room2Chat'),
+                    message: document.getElementById('room2Message'),
+                    sendBtn: document.getElementById('room2SendBtn'),
+                    players: document.getElementById('room2Players')
+                }
+            }
+        };
+        
+        // 日誌函數
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logEntry.style.color = type === 'error' ? 'red' : type === 'success' ? 'green' : 'black';
+            document.getElementById('log').appendChild(logEntry);
+            document.getElementById('log').scrollTop = document.getElementById('log').scrollHeight;
+        }
+        
+        // 更新聊天室狀態
+        function updateRoomStatus(roomName, message, className) {
+            rooms[roomName].elements.status.textContent = message;
+            rooms[roomName].elements.status.className = `status ${className}`;
+        }
+        
+        // 更新聊天室按鈕狀態
+        function updateRoomButtons(roomName) {
+            const room = rooms[roomName];
+            room.elements.joinBtn.disabled = !room.isConnected || room.isInRoom;
+            room.elements.leaveBtn.disabled = !room.isInRoom;
+            room.elements.message.disabled = !room.isInRoom;
+            room.elements.sendBtn.disabled = !room.isInRoom;
+        }
+        
+        // 更新聊天室玩家列表
+        function updateRoomPlayers(roomName) {
+            const room = rooms[roomName];
+            const p2pManager = room.p2pManager;
+            
+            console.log(`更新 ${roomName} 玩家列表:`, p2pManager);
+            
+            if (!p2pManager) {
+                room.elements.players.innerHTML = '<div class="player">等待連接...</div>';
+                return;
+            }
+            
+            let html = '';
+            
+            // 顯示當前用戶
+            const userInfo = p2pManager.getUserInfo();
+            const roomInfo = p2pManager.getRoomInfo();
+            
+            console.log(`${roomName} 用戶信息:`, userInfo);
+            console.log(`${roomName} 房間信息:`, roomInfo);
+            
+            if (userInfo && userInfo.alias) {
+                if (userInfo.isHost) {
+                    html += `<div class="player host">
+                        <span>${userInfo.alias} (您 - 主機)</span>
+                        <span>ID: ${userInfo.id}</span>
+                    </div>`;
+                } else {
+                    html += `<div class="player">
+                        <span>${userInfo.alias} (您)</span>
+                        <span>ID: ${userInfo.id}</span>
+                    </div>`;
+                }
+            } else {
+                html += `<div class="player">等待用戶信息...</div>`;
+            }
+            
+            // 顯示其他玩家（如果有）
+            if (roomInfo && roomInfo.peers && roomInfo.peers.length > 0) {
+                console.log(`${roomName} 發現 ${roomInfo.peers.length} 個其他玩家`);
+                roomInfo.peers.forEach(peer => {
+                    if (peer.id !== userInfo.id) {
+                        html += `<div class="player">
+                            <span>${peer.alias}</span>
+                            <span>ID: ${peer.id}</span>
+                        </div>`;
+                    }
+                });
+            } else {
+                console.log(`${roomName} 沒有其他玩家`);
+            }
+            
+            room.elements.players.innerHTML = html;
+        }
+        
+        // 添加聊天消息到指定聊天室
+        function addChatMessage(roomName, message, type = 'chat') {
+            console.log(`添加消息到 ${roomName}:`, message, type);
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            if (type === 'system') {
+                messageDiv.textContent = message;
+            } else {
+                try {
+                    const data = JSON.parse(message);
+                    const timestamp = new Date(data.timestamp).toLocaleTimeString();
+                    messageDiv.innerHTML = `<strong>${data.sender}:</strong> ${data.message} <small>(${timestamp})</small>`;
+                } catch (e) {
+                    // 如果解析失敗，直接顯示消息
+                    console.error('解析消息失敗:', e);
+                    messageDiv.textContent = message;
+                }
+            }
+            
+            rooms[roomName].elements.chat.appendChild(messageDiv);
+            rooms[roomName].elements.chat.scrollTop = rooms[roomName].elements.chat.scrollHeight;
+        }
+        
+        // 連接用戶1
+        document.getElementById('connectRoom1Btn').addEventListener('click', () => {
+            const alias1 = document.getElementById('alias1').value.trim();
+            if (!alias1) {
+                alert('請輸入用戶1別名');
+                return;
+            }
+            
+            try {
+                log('正在連接用戶1...', 'info');
+                rooms.room1.p2pManager.connectToSignallingServer('wss://multiplayer.construct.net', rooms.room1.clientTag);
+                log('用戶1 連接請求已發送', 'success');
+            } catch (error) {
+                log(`用戶1 連接失敗: ${error.message}`, 'error');
+                console.error('用戶1 連接錯誤:', error);
+            }
+        });
+        
+        // 連接用戶2
+        document.getElementById('connectRoom2Btn').addEventListener('click', () => {
+            const alias2 = document.getElementById('alias2').value.trim();
+            if (!alias2) {
+                alert('請輸入用戶2別名');
+                return;
+            }
+            
+            try {
+                log('正在連接用戶2...', 'info');
+                rooms.room2.p2pManager.connectToSignallingServer('wss://multiplayer.construct.net', rooms.room2.clientTag);
+                log('用戶2 連接請求已發送', 'success');
+            } catch (error) {
+                log(`用戶2 連接失敗: ${error.message}`, 'error');
+                console.error('用戶2 連接錯誤:', error);
+            }
+        });
+        
+        // 斷開所有連接
+        document.getElementById('disconnectAllBtn').addEventListener('click', () => {
+            Object.keys(rooms).forEach(roomName => {
+                const room = rooms[roomName];
+                if (room.p2pManager) {
+                    room.p2pManager.disconnect();
+                    room.isConnected = false;
+                    room.isInRoom = false;
+                    room.isHost = false;
+                    updateRoomStatus(roomName, '未連接', 'disconnected');
+                    updateRoomButtons(roomName);
+                    updateRoomPlayers(roomName);
+                    room.elements.chat.innerHTML = '';
+                }
+            });
+            
+            document.getElementById('connectAllBtn').disabled = false;
+            document.getElementById('disconnectAllBtn').disabled = true;
+            log('已斷開所有連接', 'info');
+        });
+        
+        // 測試連接狀態
+        document.getElementById('testConnectionBtn').addEventListener('click', () => {
+            console.log('=== 連接狀態測試 ===');
+            console.log('P2P 管理器:', p2pManager);
+            console.log('房間 1 狀態:', rooms.room1);
+            console.log('房間 2 狀態:', rooms.room2);
+            
+            if (p2pManager) {
+                console.log('管理器客戶端列表:', p2pManager.getAllClients());
+                console.log('當前客戶端:', p2pManager.currentClient);
+                console.log('用戶信息:', p2pManager.getUserInfo());
+                console.log('房間信息:', p2pManager.getRoomInfo());
+            }
+            
+            log('連接狀態已輸出到控制台', 'info');
+        });
+        
+        // 聊天室 1 事件 (用戶1)
+        document.getElementById('room1JoinBtn').addEventListener('click', async () => {
+            try {
+                const traceID = document.getElementById('traceID').value.trim();
+                const publicKey = document.getElementById('publicKey').value.trim();
+                const idSign = document.getElementById('idSign').value.trim();
+                
+                if (!traceID || !publicKey || !idSign) {
+                    alert('請填寫完整的房間信息');
+                    return;
+                }
+                
+                log('正在加入房間 (用戶1)...', 'info');
+                // 使用多客戶端API加入房間
+                await p2pManager.joinRoom(traceID, publicKey, idSign, 8, { clientTag: 'user1' });
+                rooms.room1.isInRoom = true;
+                updateRoomStatus('room1', '已加入房間 (用戶1)', 'joined');
+                updateRoomButtons('room1');
+                addChatMessage('room1', '已加入房間 (用戶1)', 'system');
+                updateRoomPlayers('room1');
+                log('聊天室 1 (用戶1) 加入成功', 'success');
+                
+            } catch (error) {
+                log(`聊天室 1 (用戶1) 加入失敗: ${error.message}`, 'error');
+            }
+        });
+        
+        document.getElementById('room1LeaveBtn').addEventListener('click', () => {
+            rooms.room1.p2pClient.leaveRoom();
+            rooms.room1.isInRoom = false;
+            rooms.room1.isHost = false;
+            updateRoomStatus('room1', '已離開房間', 'connected');
+            updateRoomButtons('room1');
+            updateRoomPlayers('room1');
+            addChatMessage('room1', '已離開房間', 'system');
+            log('聊天室 1 (用戶1) 已離開', 'info');
+        });
+        
+        document.getElementById('room1SendBtn').addEventListener('click', () => {
+            const message = document.getElementById('room1Message').value.trim();
+            if (!message) return;
+            
+            // 使用多客戶端API發送消息
+            if (p2pManager.sendChatMessage(message, 'orderedReliable', 'user1')) {
+                addChatMessage('room1', message, 'own');
+                document.getElementById('room1Message').value = '';
+            }
+        });
+        
+        // 聊天室 2 事件 (用戶2)
+        document.getElementById('room2JoinBtn').addEventListener('click', async () => {
+            try {
+                const traceID = document.getElementById('traceID').value.trim();
+                const publicKey = document.getElementById('publicKey').value.trim();
+                const idSign = document.getElementById('idSign').value.trim();
+                
+                if (!traceID || !publicKey || !idSign) {
+                    alert('請填寫完整的房間信息');
+                    return;
+                }
+                
+                log('正在加入房間 (用戶2)...', 'info');
+                // 使用多客戶端API加入房間
+                await p2pManager.joinRoom(traceID, publicKey, idSign, 8, { clientTag: 'user2' });
+                rooms.room2.isInRoom = true;
+                updateRoomStatus('room2', '已加入房間 (用戶2)', 'joined');
+                updateRoomButtons('room2');
+                addChatMessage('room2', '已加入房間 (用戶2)', 'system');
+                updateRoomPlayers('room2');
+                log('聊天室 2 (用戶2) 加入成功', 'success');
+                
+            } catch (error) {
+                log(`聊天室 2 (用戶2) 加入失敗: ${error.message}`, 'error');
+            }
+        });
+        
+        document.getElementById('room2LeaveBtn').addEventListener('click', () => {
+            rooms.room2.p2pClient.leaveRoom();
+            rooms.room2.isInRoom = false;
+            rooms.room2.isHost = false;
+            updateRoomStatus('room2', '已離開房間', 'connected');
+            updateRoomButtons('room2');
+            updateRoomPlayers('room2');
+            addChatMessage('room2', '已離開房間', 'system');
+            log('聊天室 2 (用戶2) 已離開', 'info');
+        });
+        
+        document.getElementById('room2SendBtn').addEventListener('click', () => {
+            const message = document.getElementById('room2Message').value.trim();
+            if (!message) return;
+            
+            // 使用多客戶端API發送消息
+            if (p2pManager.sendChatMessage(message, 'orderedReliable', 'user2')) {
+                addChatMessage('room2', message, 'own');
+                document.getElementById('room2Message').value = '';
+            }
+        });
+        
+        // 回車發送消息
+        document.getElementById('room1Message').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('room1SendBtn').click();
+            }
+        });
+        
+        document.getElementById('room2Message').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('room2SendBtn').click();
+            }
+        });
+        
+        // 清除日誌
+        document.getElementById('clearLogBtn').addEventListener('click', () => {
+            document.getElementById('log').innerHTML = '';
+        });
+        
+        // 初始化
+        Object.keys(rooms).forEach(roomName => {
+            updateRoomButtons(roomName);
+        });
+        
+        log('雙聊天室模擬已初始化', 'info');
+    </script>
+</body>
+</html>
