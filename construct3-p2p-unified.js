@@ -332,9 +332,9 @@ class P2PClient {
 
     /**
      * 自動加入房間
-     * @param {string} traceID - 追蹤 ID
-     * @param {string} publicKey - 公鑰
-     * @param {string} idSign - ID 簽名 (Peer ID 的簽名哈希)
+     * @param {string} traceID - Trace ID of a person/object
+     * @param {string} publicKey - Public key
+     * @param {string} idSign - Hash of the ID from server (Peer ID 的簽名哈希)
      * @param {number} max_clients - 最大客戶端數量
      * @param {boolean} lock_when_full - 滿員時是否鎖定
      */
