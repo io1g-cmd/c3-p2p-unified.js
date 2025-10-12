@@ -122,9 +122,9 @@ class P2PClient {
         this.hostAlias = "";
         
         // 房間信息 (使用新的命名)
-        this.traceID = "";      // 原 game - 追蹤 ID
-        this.publicKey = "";    // 原 instance - 公鑰
-        this.idSign = "";       // 原 room - Peer ID 的簽名哈希 (連接信令服務獲得 Peer ID → 簽署 → 得到 Hash)
+        this.traceID = "";      // target
+        this.publicKey = "";    // Public key
+        this.idSign = "";       // sign here
         this.isOnRoom = false;
         
         // WebRTC 連接
