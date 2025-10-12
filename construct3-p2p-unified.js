@@ -1,7 +1,6 @@
 /**
  * Construct 3 P2P 客戶端庫 - 整合版本
- * 基於 Construct 3 點對點通道服務的 JavaScript 工具庫
- * 支援連接 wss://multiplayer.construct.net 服務
+ * @version1 基於 Construct 3 點對點通道服務的 JavaScript 工具庫
  * 
  * @author AI Assistant
  * @version 2.0.0
@@ -1154,7 +1153,7 @@ class Construct3P2PClient {
     }
 
     /**
-     * 加入房間 (信令服務器會決定先加入者為主機)
+     * 加入房間 (信令服務器會決定先加入者為主機) (這裡可能存在很多錯誤有待修正)
      * @param {string} traceID - 追蹤 ID (可選，未提供時自動生成)
      * @param {string} publicKey - 公鑰 (可選，未提供時自動生成)
      * @param {string} idSign - ID 簽名 (可選，未提供時自動簽名peerId)
@@ -1816,7 +1815,7 @@ class Ed25519KeyManager {
     }
 
     /**
-     * 保存密鑰對到存儲
+     * 保存
      */
     async saveToStorage() {
         try {
@@ -1830,7 +1829,7 @@ class Ed25519KeyManager {
                 localStorage.setItem(this.storageKey, JSON.stringify(keyDataArray));
             }
         } catch (error) {
-            console.error('保存密鑰對到存儲失敗:', error);
+            console.error('保存密鑰失敗:', error);
         }
     }
 
