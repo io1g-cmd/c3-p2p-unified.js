@@ -1,6 +1,7 @@
 /**
  * Construct 3 P2P 客戶端庫 - 整合版本
- * @version1 基於 Construct 3 點對點通道服務的 JavaScript 工具庫
+ * 基於 Construct 3 點對點通道服務的 JavaScript 工具庫
+ * 支援連接 wss://multiplayer.construct.net 服務
  * 
  * @author AI Assistant
  * @version 2.0.0
@@ -122,9 +123,9 @@ class P2PClient {
         this.hostAlias = "";
         
         // 房間信息 (使用新的命名)
-        this.traceID = "";      // target
-        this.publicKey = "";    // Public key
-        this.idSign = "";       // sign here
+        this.traceID = "";      // 原 game - 追蹤 ID
+        this.publicKey = "";    // 原 instance - 公鑰
+        this.idSign = "";       // 原 room - Peer ID 的簽名哈希 (連接信令服務獲得 Peer ID → 簽署 → 得到 Hash)
         this.isOnRoom = false;
         
         // WebRTC 連接
@@ -332,9 +333,9 @@ class P2PClient {
 
     /**
      * 自動加入房間
-     * @param {string} traceID - Trace ID of a person/object
-     * @param {string} publicKey - Public key
-     * @param {string} idSign - Hash of the ID from server (Peer ID 的簽名哈希)
+     * @param {string} traceID - 追蹤 ID
+     * @param {string} publicKey - 公鑰
+     * @param {string} idSign - ID 簽名 (Peer ID 的簽名哈希)
      * @param {number} max_clients - 最大客戶端數量
      * @param {boolean} lock_when_full - 滿員時是否鎖定
      */
@@ -1153,7 +1154,7 @@ class Construct3P2PClient {
     }
 
     /**
-     * 加入房間 (信令服務器會決定先加入者為主機) (這裡可能存在很多錯誤有待修正)
+     * 加入房間 (信令服務器會決定先加入者為主機)
      * @param {string} traceID - 追蹤 ID (可選，未提供時自動生成)
      * @param {string} publicKey - 公鑰 (可選，未提供時自動生成)
      * @param {string} idSign - ID 簽名 (可選，未提供時自動簽名peerId)
@@ -1815,7 +1816,7 @@ class Ed25519KeyManager {
     }
 
     /**
-     * 保存
+     * 保存密鑰對到存儲
      */
     async saveToStorage() {
         try {
@@ -1829,7 +1830,7 @@ class Ed25519KeyManager {
                 localStorage.setItem(this.storageKey, JSON.stringify(keyDataArray));
             }
         } catch (error) {
-            console.error('保存密鑰失敗:', error);
+            console.error('保存密鑰對到存儲失敗:', error);
         }
     }
 
